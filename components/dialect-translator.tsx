@@ -190,13 +190,6 @@ export function DialectTranslator() {
                   <li>「翻訳する」ボタンをクリックします</li>
                   <li>標準語に翻訳された結果が表示されます</li>
                 </ol>
-                <h4 className="text-md font-medium mt-4 text-gray-800 dark:text-gray-200">宮崎弁の特徴</h4>
-                <ul className="list-disc pl-5 space-y-1 text-gray-600 dark:text-gray-300">
-                  <li>「〜ごわす」「〜ちょる」などの特徴的な語尾</li>
-                  <li>「〜と」「〜とよ」などの文末表現</li>
-                  <li>「おいどん」（私）、「あんた」（あなた）などの人称代名詞</li>
-                  <li>「せんといかん」（しなければならない）のような義務表現</li>
-                </ul>
                 <p className="text-sm text-gray-500 dark:text-gray-400 mt-4">
                   ※翻訳精度は完璧ではありません。文脈によっては正確に翻訳されない場合があります。
                 </p>
