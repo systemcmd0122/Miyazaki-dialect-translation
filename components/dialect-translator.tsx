@@ -1,19 +1,20 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { Button } from "@/components/ui/button"
-import { Textarea } from "@/components/ui/textarea"
 import { Card, CardContent } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Loader2, Mic, MicOff } from "lucide-react"
-import { useSpeechRecognition } from "@/hooks/use-speech-recognition"
+import { Button } from "@/components/ui/button"
+import { Textarea } from "@/components/ui/textarea"
 import { cn } from "@/lib/utils"
+import { useSpeechRecognition } from "@/hooks/use-speech-recognition"
+import { MicIcon, MicOffIcon, ArrowRightLeft } from "lucide-react"
 
 export function DialectTranslator() {
-  const [dialectText, setDialectText] = useState("")
+  const [inputText, setInputText] = useState("")
   const [translatedText, setTranslatedText] = useState("")
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [mode, setMode] = useState<"toStandard" | "toDialect">("toStandard")
 
   const {
     isListening,
@@ -24,14 +25,12 @@ export function DialectTranslator() {
     error: speechError,
   } = useSpeechRecognition()
 
-  // 音声認識の結果をテキストエリアに反映（そのまま追加）
   useEffect(() => {
     if (transcript) {
-      setDialectText((prev) => prev + transcript)
+      setInputText((prev) => prev + transcript)
     }
   }, [transcript])
 
-  // 音声認識のエラーを表示
   useEffect(() => {
     if (speechError) {
       setError(speechError)
@@ -39,19 +38,19 @@ export function DialectTranslator() {
   }, [speechError])
 
   const handleTranslate = async () => {
-    if (!dialectText.trim()) return
+    if (!inputText.trim()) return
 
     setIsLoading(true)
     setError(null)
 
     try {
-      // 前処理を行わず、そのままのテキストを送信
-      const response = await fetch("/api/translate", {
+      const endpoint = mode === "toStandard" ? "/api/translate" : "/api/to-dialect"
+      const response = await fetch(endpoint, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ text: dialectText }),
+        body: JSON.stringify({ text: inputText }),
       })
 
       if (!response.ok) {
@@ -76,6 +75,12 @@ export function DialectTranslator() {
     }
   }
 
+  const toggleMode = () => {
+    setMode((prev) => (prev === "toStandard" ? "toDialect" : "toStandard"))
+    setInputText("")
+    setTranslatedText("")
+  }
+
   return (
     <div className="max-w-3xl mx-auto">
       <Card className="bg-white dark:bg-gray-800 shadow-md border-none">
@@ -87,10 +92,25 @@ export function DialectTranslator() {
             </TabsList>
 
             <TabsContent value="translate" className="space-y-6">
+              <div className="flex justify-between items-center mb-4">
+                <h3 className="text-lg font-medium">
+                  {mode === "toStandard" ? "宮崎弁 → 標準語" : "標準語 → 宮崎弁"}
+                </h3>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={toggleMode}
+                  className="flex items-center gap-2"
+                >
+                  <ArrowRightLeft className="h-4 w-4" />
+                  <span>変換方向を切り替え</span>
+                </Button>
+              </div>
+
               <div>
                 <div className="flex justify-between items-center mb-2">
-                  <label htmlFor="dialect-input" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                    宮崎弁を入力してください
+                  <label htmlFor="input-text" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                    {mode === "toStandard" ? "宮崎弁を入力してください" : "標準語を入力してください"}
                   </label>
                   {hasRecognitionSupport && (
                     <Button
@@ -98,20 +118,19 @@ export function DialectTranslator() {
                       size="sm"
                       onClick={toggleListening}
                       className={cn(
-                        "flex items-center gap-1",
-                        isListening &&
-                          "bg-red-50 text-red-600 border-red-200 hover:bg-red-100 dark:bg-red-900 dark:text-red-300 dark:border-red-800 dark:hover:bg-red-800",
+                        "flex items-center gap-2",
+                        isListening && "border-red-500 text-red-500 hover:text-red-600"
                       )}
                     >
                       {isListening ? (
                         <>
-                          <MicOff className="h-4 w-4" />
-                          <span>停止</span>
+                          <MicOffIcon className="h-4 w-4" />
+                          <span>音声入力を停止</span>
                         </>
                       ) : (
                         <>
-                          <Mic className="h-4 w-4" />
-                          <span>音声入力</span>
+                          <MicIcon className="h-4 w-4" />
+                          <span>音声入力を開始</span>
                         </>
                       )}
                     </Button>
@@ -119,40 +138,28 @@ export function DialectTranslator() {
                 </div>
                 <div className="relative">
                   <Textarea
-                    id="dialect-input"
-                    placeholder="宮崎弁を入力"
-                    value={dialectText}
-                    onChange={(e) => setDialectText(e.target.value)}
+                    id="input-text"
+                    placeholder={mode === "toStandard" ? "宮崎弁を入力" : "標準語を入力"}
+                    value={inputText}
+                    onChange={(e) => setInputText(e.target.value)}
                     className={cn(
                       "min-h-[120px] resize-y dark:bg-gray-700 dark:text-gray-100 dark:placeholder:text-gray-400",
                       isListening &&
                         "border-red-300 focus-visible:ring-red-300 dark:border-red-700 dark:focus-visible:ring-red-700",
                     )}
                   />
-                  {isListening && (
-                    <div className="absolute top-2 right-2">
-                      <div className="flex items-center justify-center h-6 w-6">
-                        <div className="relative h-3 w-3">
-                          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75 dark:bg-red-500"></span>
-                          <span className="relative inline-flex rounded-full h-3 w-3 bg-red-500 dark:bg-red-600"></span>
-                        </div>
-                      </div>
-                    </div>
-                  )}
                 </div>
                 {isListening && (
-                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                    音声を認識中... マイクに向かって宮崎弁で話してください（ひらがなで文字起こしします）
-                  </p>
+                  <p className="text-sm text-red-500 dark:text-red-400 mt-2">音声を認識しています...</p>
                 )}
               </div>
 
-              <Button onClick={handleTranslate} disabled={isLoading || !dialectText.trim()} className="w-full">
+              <Button onClick={handleTranslate} disabled={isLoading || !inputText.trim()} className="w-full">
                 {isLoading ? (
-                  <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    翻訳中...
-                  </>
+                  <div className="flex items-center gap-2">
+                    <div className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
+                    <span>翻訳中...</span>
+                  </div>
                 ) : (
                   "翻訳する"
                 )}
@@ -162,9 +169,11 @@ export function DialectTranslator() {
 
               {translatedText && (
                 <div className="mt-6">
-                  <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">翻訳結果:</h3>
-                  <div className="p-4 bg-gray-50 dark:bg-gray-700 rounded-md border border-gray-200 dark:border-gray-600">
-                    <p className="whitespace-pre-wrap dark:text-gray-100">{translatedText}</p>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                    翻訳結果
+                  </label>
+                  <div className="p-4 rounded-lg bg-gray-50 dark:bg-gray-900">
+                    <p className="text-gray-900 dark:text-gray-100 whitespace-pre-wrap">{translatedText}</p>
                   </div>
                 </div>
               )}
@@ -174,31 +183,23 @@ export function DialectTranslator() {
               <div className="prose prose-sm max-w-none dark:prose-invert">
                 <h3 className="text-lg font-medium text-gray-800 dark:text-gray-200">宮崎弁翻訳について</h3>
                 <p className="text-gray-600 dark:text-gray-300">
-                  このツールは、宮崎県の方言（宮崎弁）を標準的な日本語に翻訳するためのものです。Gemini
-                  APIを活用して、入力された宮崎弁を解析し、標準語に変換します。
+                  このツールは、宮崎県の方言（宮崎弁）と標準的な日本語を相互に翻訳するためのものです。
+                  Gemini APIを活用して、入力されたテキストを解析し、変換します。
                 </p>
                 <h4 className="text-md font-medium mt-4 text-gray-800 dark:text-gray-200">使い方</h4>
                 <ol className="list-decimal pl-5 space-y-2 text-gray-600 dark:text-gray-300">
-                  <li>
-                    「翻訳」タブで宮崎弁のテキストを入力します
-                    {hasRecognitionSupport && (
-                      <span className="text-sm text-gray-500 dark:text-gray-400 block mt-1">
-                        または「音声入力」ボタンをクリックして、マイクで宮崎弁を話すこともできます（ひらがなで文字起こしされます）
-                      </span>
-                    )}
-                  </li>
-                  <li>「翻訳する」ボタンをクリックします</li>
-                  <li>標準語に翻訳された結果が表示されます</li>
+                  <li>「翻訳」タブで、変換方向を選択します（宮崎弁→標準語、または標準語→宮崎弁）</li>
+                  <li>テキストを入力欄に直接入力するか、音声入力ボタンを使用して入力します</li>
+                  <li>「翻訳する」ボタンをクリックして変換を実行します</li>
+                  <li>翻訳結果が下部に表示されます</li>
                 </ol>
                 <p className="text-sm text-gray-500 dark:text-gray-400 mt-4">
                   ※翻訳精度は完璧ではありません。文脈によっては正確に翻訳されない場合があります。
                 </p>
                 {!hasRecognitionSupport && (
-                  <div className="mt-4 p-3 bg-yellow-50 dark:bg-yellow-900 border border-yellow-200 dark:border-yellow-800 rounded-md">
-                    <p className="text-sm text-yellow-700 dark:text-yellow-300">
-                      お使いのブラウザは音声認識機能をサポートしていません。Chrome、Edge、Safariなどの最新ブラウザをご利用ください。
-                    </p>
-                  </div>
+                  <p className="text-sm text-yellow-600 dark:text-yellow-400 mt-2">
+                    ※お使いのブラウザは音声認識をサポートしていません。テキスト入力のみ利用可能です。
+                  </p>
                 )}
               </div>
             </TabsContent>
