@@ -7,7 +7,8 @@ import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
 import { cn } from "@/lib/utils"
 import { useSpeechRecognition } from "@/hooks/use-speech-recognition"
-import { MicIcon, MicOffIcon, ArrowRightLeft } from "lucide-react"
+import { useSpeech } from "@/hooks/use-speech"
+import { MicIcon, MicOffIcon, ArrowRightLeft, Volume2, VolumeX } from "lucide-react"
 
 export function DialectTranslator() {
   const [inputText, setInputText] = useState("")
@@ -15,6 +16,8 @@ export function DialectTranslator() {
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [mode, setMode] = useState<"toStandard" | "toDialect">("toStandard")
+  const [isSpeaking, setIsSpeaking] = useState(false)
+  const { speak, stop } = useSpeech()
 
   const {
     isListening,
@@ -36,6 +39,15 @@ export function DialectTranslator() {
       setError(speechError)
     }
   }, [speechError])
+
+  // クリーンアップ処理：コンポーネントのアンマウント時に音声を停止
+  useEffect(() => {
+    return () => {
+      if (isSpeaking) {
+        stop()
+      }
+    }
+  }, [isSpeaking, stop])
 
   const handleTranslate = async () => {
     if (!inputText.trim()) return
@@ -79,6 +91,31 @@ export function DialectTranslator() {
     setMode((prev) => (prev === "toStandard" ? "toDialect" : "toStandard"))
     setInputText("")
     setTranslatedText("")
+    stop()
+    setIsSpeaking(false)
+  }
+
+  // 音声読み上げの設定
+  const handleSpeak = () => {
+    if (isSpeaking) {
+      stop()
+      setIsSpeaking(false)
+      return
+    }
+
+    if (!translatedText) return
+
+    // 宮崎弁モードの場合は、ピッチとレートを調整して方言っぽく
+    const options = mode === "toDialect" ? {
+      pitch: 1.1,  // 少し高め
+      rate: 0.9    // 少しゆっくり
+    } : {
+      pitch: 1.0,  // 標準
+      rate: 1.0    // 標準
+    }
+
+    speak(translatedText, options)
+    setIsSpeaking(true)
   }
 
   return (
@@ -169,9 +206,32 @@ export function DialectTranslator() {
 
               {translatedText && (
                 <div className="mt-6">
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                    翻訳結果
-                  </label>
+                  <div className="flex justify-between items-center mb-2">
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                      翻訳結果
+                    </label>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={handleSpeak}
+                      className={cn(
+                        "flex items-center gap-2",
+                        isSpeaking && "text-blue-500 hover:text-blue-600"
+                      )}
+                    >
+                      {isSpeaking ? (
+                        <>
+                          <VolumeX className="h-4 w-4" />
+                          <span>停止</span>
+                        </>
+                      ) : (
+                        <>
+                          <Volume2 className="h-4 w-4" />
+                          <span>読み上げ</span>
+                        </>
+                      )}
+                    </Button>
+                  </div>
                   <div className="p-4 rounded-lg bg-gray-50 dark:bg-gray-900">
                     <p className="text-gray-900 dark:text-gray-100 whitespace-pre-wrap">{translatedText}</p>
                   </div>
